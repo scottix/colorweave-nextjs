@@ -1,9 +1,14 @@
 'use client'
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-import {type AnyColorType, type cmyk, type lab, type rgb, anyToCmyk, anyToHsl, anyToLab, anyToRgb, cmykToRgb, hexToCmyk, hexToLab, hexToRgb, labToRgb} from './convert';
-import { throttle } from './utils';
+import {
+  type AnyColorType, type cmyk, type hsl, type lab, type rgb,
+  anyToCmyk, anyToHsl, anyToLab, anyToRgb,
+  cmykToRgb,
+  hslToRgb,
+  labToRgb
+} from './convert';
 
 interface ColorSliderProps {
   width: number;
@@ -25,62 +30,105 @@ const ColorSlider: React.FC<ColorSliderProps> = ({width, height, colorMode, colo
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const drawParams = useRef<DrawParams>({width: width, height: height, minValue: 0, maxValue: 255});
-  const [color, setColor] = useState(0);
+  const _sliderValue = useRef<number>(0);
+  const [sliderValue, setSliderValue] = useState(0);
   const [sliderPosition, setSliderPosition] = useState({top: 0, left: -8});
   const [minValue, setMinValue] = useState(0);
   const [maxValue, setMaxValue] = useState(255);
 
-  const updateColor = () => {
+  const updateSliderValue = () => {
     if (colorMode === 'rgb') {
       const currentRgb: rgb = anyToRgb(current);
       switch(colorType) {
         case 'r':
-          setColor(currentRgb.r);
-          updateSliderPosition(currentRgb.r);
+          if (sliderValue !== currentRgb.r) {
+            _sliderValue.current = currentRgb.r;
+            setSliderValue(currentRgb.r);
+          }
           break;
         case 'g':
-          setColor(currentRgb.g);
-          updateSliderPosition(currentRgb.g);
+          if (sliderValue !== currentRgb.g) {
+            _sliderValue.current = currentRgb.g;
+            setSliderValue(currentRgb.g);
+          }
           break;
         case 'b':
-          setColor(currentRgb.b);
-          updateSliderPosition(currentRgb.b);
+          if (sliderValue !== currentRgb.b) {
+            _sliderValue.current = currentRgb.b;
+            setSliderValue(currentRgb.b);
+          }
           break;
       }
     } else if (colorMode === 'cmyk') {
       const currentCmyk: cmyk = anyToCmyk(current);
       switch(colorType) {
         case 'c':
-          setColor(currentCmyk.c);
-          updateSliderPosition(currentCmyk.c);
+          if (sliderValue !== currentCmyk.c) {
+            _sliderValue.current = currentCmyk.c;
+            setSliderValue(currentCmyk.c);
+          }
           break;
         case 'm':
-          setColor(currentCmyk.m);
-          updateSliderPosition(currentCmyk.m);
+          if (sliderValue !== currentCmyk.m) {
+            _sliderValue.current = currentCmyk.m;
+            setSliderValue(currentCmyk.m);
+          }
           break;
         case 'y':
-          setColor(currentCmyk.y);
-          updateSliderPosition(currentCmyk.y);
+          if (sliderValue !== currentCmyk.y) {
+            _sliderValue.current = currentCmyk.y;
+            setSliderValue(currentCmyk.y);
+          }
           break;
         case 'k':
-          setColor(currentCmyk.k);
-          updateSliderPosition(currentCmyk.k);
+          if (sliderValue !== currentCmyk.k) {
+            _sliderValue.current = currentCmyk.k;
+            setSliderValue(currentCmyk.k);
+          }
+          break;
+      }
+    } else if (colorMode === 'hsl') {
+      const currentHsl: hsl = anyToHsl(current);
+      switch(colorType) {
+        case 'h':
+          if (sliderValue !== currentHsl.h) {
+            _sliderValue.current = Math.round(currentHsl.h);
+            setSliderValue(Math.round(currentHsl.h));
+          }
+          break;
+        case 's':
+          if (sliderValue !== currentHsl.s) {
+            _sliderValue.current = Math.round(currentHsl.s);
+            setSliderValue(Math.round(currentHsl.s));
+          }
+          break;
+        case 'l':
+          if (sliderValue !== currentHsl.l) {
+            _sliderValue.current = Math.round(currentHsl.l);
+            setSliderValue(Math.round(currentHsl.l));
+          }
           break;
       }
     } else if (colorMode === 'lab') {
       const currentLab: lab = anyToLab(current);
       switch(colorType) {
         case 'l': 
-          setColor(Math.round(currentLab.l)); 
-          updateSliderPosition(Math.round(currentLab.l)); 
+          if (sliderValue !== currentLab.l) {
+            _sliderValue.current = Math.round(currentLab.l);
+            setSliderValue(Math.round(currentLab.l));
+          }
           break;
-        case 'a': 
-          setColor(Math.round(currentLab.a)); 
-          updateSliderPosition(Math.round(currentLab.a)); 
+        case 'a':
+          if (sliderValue !== currentLab.a) {
+            _sliderValue.current = Math.round(currentLab.a);
+            setSliderValue(Math.round(currentLab.a));
+          }
           break;
-        case 'b': 
-          setColor(Math.round(currentLab.b)); 
-          updateSliderPosition(Math.round(currentLab.b)); 
+        case 'b':
+          if (sliderValue !== currentLab.b) {
+            _sliderValue.current = Math.round(currentLab.b);
+            setSliderValue(Math.round(currentLab.b));
+          }
           break;
       }
     }
@@ -88,16 +136,21 @@ const ColorSlider: React.FC<ColorSliderProps> = ({width, height, colorMode, colo
 
   const updateColorMode = () => {
     switch(colorMode) {
-      case 'rgb':
-        if (minValue !== 0 || maxValue !== 255) {
-          setMinValue(0);
-          setMaxValue(255);
-          drawParams.current.minValue = 0;
-          drawParams.current.maxValue = 255;
-        }
-        break;
       case 'cmyk':
         if (minValue !== 0 || maxValue !== 100) {
+          setMinValue(0);
+          setMaxValue(100);
+          drawParams.current.minValue = 0;
+          drawParams.current.maxValue = 100;
+        }
+        break;
+      case 'hsl':
+        if (colorType === 'h' && (minValue !== 0 || maxValue !== 360)) {
+          setMinValue(0);
+          setMaxValue(360);
+          drawParams.current.minValue = 0;
+          drawParams.current.maxValue = 360;
+        } else if ((colorType === 's' || colorType === 'l') && (minValue !== 0 || maxValue !== 100)) {
           setMinValue(0);
           setMaxValue(100);
           drawParams.current.minValue = 0;
@@ -117,6 +170,14 @@ const ColorSlider: React.FC<ColorSliderProps> = ({width, height, colorMode, colo
           drawParams.current.maxValue = 127;
         }
         break;
+      case 'rgb':
+        if (minValue !== 0 || maxValue !== 255) {
+          setMinValue(0);
+          setMaxValue(255);
+          drawParams.current.minValue = 0;
+          drawParams.current.maxValue = 255;
+        }
+        break;
     }
   };
 
@@ -134,20 +195,7 @@ const ColorSlider: React.FC<ColorSliderProps> = ({width, height, colorMode, colo
 
     for (let x = 0; x < params.width; x++) {
       const scale = Math.round(((x / params.width) * (params.maxValue - params.minValue)) + params.minValue);
-      if (colorMode === 'rgb') {
-        const currentRgb = anyToRgb(current);
-        switch (colorType) {
-          case 'r':
-            contextRef.current.fillStyle = `rgb(${scale}, ${currentRgb.g}, ${currentRgb.b})`;
-            break;
-          case 'g':
-            contextRef.current.fillStyle = `rgb(${currentRgb.r}, ${scale}, ${currentRgb.b})`;
-            break;
-          case 'b':
-            contextRef.current.fillStyle = `rgb(${currentRgb.r}, ${currentRgb.g}, ${scale})`;
-            break;
-        }
-      } else if (colorMode === 'cmyk') {
+      if (colorMode === 'cmyk') {
         const currentCmyk = anyToCmyk(current);
         let rgb: rgb = {r:0, g:0, b:0};
         switch (colorType) {
@@ -162,6 +210,21 @@ const ColorSlider: React.FC<ColorSliderProps> = ({width, height, colorMode, colo
             break;
           case 'k':
             rgb = cmykToRgb(currentCmyk.c, currentCmyk.m, currentCmyk.y, scale);
+            break;
+        }
+        contextRef.current.fillStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+      } else if (colorMode === 'hsl') {
+        const currentHsl = anyToHsl(current);
+        let rgb: rgb = {r:0, g:0, b:0};
+        switch (colorType) {
+          case 'h':
+            rgb = hslToRgb(scale, currentHsl.s, currentHsl.l);
+            break;
+          case 's':
+            rgb = hslToRgb(currentHsl.h, scale, currentHsl.l);
+            break;
+          case 'l':
+            rgb = hslToRgb(currentHsl.h, currentHsl.s, scale);
             break;
         }
         contextRef.current.fillStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
@@ -180,6 +243,19 @@ const ColorSlider: React.FC<ColorSliderProps> = ({width, height, colorMode, colo
             break;
         }
         contextRef.current.fillStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+      } else if (colorMode === 'rgb') {
+        const currentRgb = anyToRgb(current);
+        switch (colorType) {
+          case 'r':
+            contextRef.current.fillStyle = `rgb(${scale}, ${currentRgb.g}, ${currentRgb.b})`;
+            break;
+          case 'g':
+            contextRef.current.fillStyle = `rgb(${currentRgb.r}, ${scale}, ${currentRgb.b})`;
+            break;
+          case 'b':
+            contextRef.current.fillStyle = `rgb(${currentRgb.r}, ${currentRgb.g}, ${scale})`;
+            break;
+        }
       }
       contextRef.current.fillRect(x, 0, 1, height);
     }
@@ -196,9 +272,12 @@ const ColorSlider: React.FC<ColorSliderProps> = ({width, height, colorMode, colo
   }, []);
 
   useEffect(() => {
-    updateColorMode();
-    updateColor();
+    updateSliderPosition(_sliderValue.current);
+  }, [sliderValue]);
 
+  useEffect(() => {
+    updateColorMode();
+    updateSliderValue();
     if (contextRef.current) {
       requestAnimationFrame(draw);
     }
@@ -206,9 +285,7 @@ const ColorSlider: React.FC<ColorSliderProps> = ({width, height, colorMode, colo
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseInt(e.target.value);
-    setColor(newValue);
     onUpdate(colorType, newValue);
-    updateSliderPosition(newValue);
   };
 
   return (
@@ -216,9 +293,9 @@ const ColorSlider: React.FC<ColorSliderProps> = ({width, height, colorMode, colo
       <div className='relative'>
         <canvas ref={canvasRef} width={width} height={height} className='z-0' style={{ width: width, height: height }} />
         <div className='absolute rounded-full w-4 h-4 border border-black' style={sliderPosition}></div>
-        <input type='range' value={color} step='1' min={minValue} max={maxValue} className='absolute w-full opacity-0 z-10' onChange={handleInputChange} style={{ top: 0, height: `${height}px` }} />
+        <input type='range' value={sliderValue} step='1' min={minValue} max={maxValue} className='absolute w-full opacity-0 z-10' onChange={handleInputChange} style={{ top: 0, height: `${height}px` }} />
       </div>
-      <input type='number' value={color} min={minValue} max={maxValue} onChange={handleInputChange} className='ml-3 w-10 h-8 px-1.5 text-black no-spin' />
+      <input type='number' value={sliderValue} min={minValue} max={maxValue} onChange={handleInputChange} className='ml-3 w-10 h-8 px-1.5 text-black no-spin' />
     </div>
   );
 };

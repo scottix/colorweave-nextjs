@@ -1,15 +1,12 @@
 'use client'
 
-import React, { useRef, useEffect, useState, ChangeEvent, MouseEvent } from 'react';
+import React, { useRef, useEffect, useState, ChangeEvent, MouseEvent, useCallback } from 'react';
 
 import {
-  type AnyColorType, type cmyk, type lab, type rgb,
+  type AnyColorType, type cmyk, type hsl, type lab, type rgb, type xyz,
   anyConvert, anyToHsl, anyToHex,
-  cmykToRgb,
-  hexToCmyk, hexToLab, hexToRgb, hexToHsl,
   hslToRgb,
-  rgbToHex,
-  labToRgb
+  rgbToAny,
 } from './convert';
 
 import ColorSlider from './ColorSlider';
@@ -20,11 +17,12 @@ interface ColorPickerProps {
   onSelectColor?: (color: AnyColorType) => void;
 }
 
-type ColorMode = 'rgb' | 'cmyk' | 'lab' | 'oklab';
+type ColorMode = 'rgb' | 'cmyk' | 'hsl' | 'lab' | 'oklab';
 
 const colorMappings: { [key in ColorMode]: string[] } = {
   rgb: ['r', 'g', 'b'],
   cmyk: ['c', 'm', 'y', 'k'],
+  hsl: ['h', 's', 'l'],
   lab: ['l', 'a', 'b'],
   oklab: ['o', 'k', 'l'],
 };
@@ -64,7 +62,11 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ width = 400, height = 400, on
     if (contextRef.current) {
       drawRGB(contextRef.current, width, height);
     }
-  }, [width, height]);
+  }, []);
+
+  useEffect(() => {
+    updateKnobPosition();
+  }, [selectedColor])
 
   const handleDrag = (event: MouseEvent<HTMLCanvasElement>, bypass = false) => {
     if (!isDragging.current && !bypass) {
@@ -75,17 +77,8 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ width = 400, height = 400, on
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      setKnobPosition({ top: y - 8, left: x - 8});
-
       const pixel = contextRef.current.getImageData(x, y, 1, 1).data;
-      const color: AnyColorType = {
-        type: 'rgb',
-        color: {
-          r: pixel[0],
-          g: pixel[1],
-          b: pixel[2]
-        }
-      };
+      const color: AnyColorType = rgbToAny(pixel[0], pixel[1], pixel[2], colorMode);
 
       setSelectedColor(color);
       if (onSelectColor) {
@@ -104,29 +97,37 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ width = 400, height = 400, on
   };
 
   const handleSliderChange = (colorType: string, value: number) => {
-    setSelectedColor((prev: AnyColorType) => {
+    // console.log(`handleSliderChange ${colorType} ${value}`);
+    setSelectedColor((prev: AnyColorType): AnyColorType => {
+      let newColor: any;
       switch (prev.type) {
-        case 'rgb':
-          if (colorType in prev.color) {
-            (prev.color as rgb)[colorType as keyof rgb] = value;
-          }
-          break;
         case 'cmyk':
-          if (colorType in prev.color) {
-            (prev.color as cmyk)[colorType as keyof cmyk] = value;
-          }
+          newColor = { ...(prev.color as cmyk), [colorType]: value };
+          break;
+        case 'hsl':
+          newColor = { ...(prev.color as hsl), [colorType]: value };
           break;
         case 'lab':
-          if (colorType in prev.color) {
-            (prev.color as lab)[colorType as keyof lab] = value;
-          }
+          newColor = { ...(prev.color as lab), [colorType]: value };
           break;
+        case 'rgb':
+          newColor = { ...(prev.color as rgb), [colorType]: value };
+          break;
+        case 'xyz':
+          newColor = { ...(prev.color as xyz), [colorType]: value };
+          break;
+        default:
+          throw new Error(`Unsupported color type: ${prev.type}`);
       }
-      return { ...prev };
+  
+      // Cast the new color back to the correct type now that it's been set.
+      return {
+        type: prev.type,
+        color: newColor
+      } as AnyColorType;
     });
-    updateKnobPosition();
   };
-
+  
   return (
     <div>
       <div className='relative'>
@@ -148,6 +149,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ width = 400, height = 400, on
         <select className='text-black' onChange={handleColorModeChange}>
           <option value='rgb'>RGB</option>
           <option value='cmyk'>CMYK</option>
+          <option value='hsl'>HSL</option>
           <option value='lab'>LAB</option>
           <option value='oklab'>Oklab</option>
         </select>

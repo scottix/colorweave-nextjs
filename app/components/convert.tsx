@@ -294,6 +294,23 @@ const labToXyz = (l: number, a: number, b: number): xyz => {
   };
 };
 
+const rgbToAny = (r: number, g: number, b: number, mode: mode): any => {
+  switch (mode) {
+    case 'cmyk':
+      return {type: 'cmyk', color: rgbToCmyk(r, g, b)};
+    case 'hex':
+      return {type: 'hex', color: rgbToHex(r, g, b)};
+    case 'hsl':
+      return {type: 'hsl', color: rgbToHsl(r, g, b)};
+    case 'lab':
+      return {type: 'lab', color: rgbToLab(r, g, b)};
+    case 'oklab':
+      return {type: 'oklab', color: rgbToLab(r, g, b)};
+    case 'rgb':
+      return {type: 'rgb', color: {r: r, g: g, b: b}};
+  }
+};
+
 const rgbToCmyk = (r: number, g: number, b: number): cmyk => {
   // Convert RGB components to the range of 0 to 1
   const rDecimal = r / 255;
@@ -424,6 +441,6 @@ export {
   hexToCmyk, hexToRgb, hexToHsl, hexToLab,
   hslToRgb,
   labToRgb, labToXyz,
-  rgbToHex, rgbToHsl, rgbToLab, rgbToXyz,
+  rgbToAny, rgbToHex, rgbToHsl, rgbToLab, rgbToXyz,
   xyzToRgb,
 };
